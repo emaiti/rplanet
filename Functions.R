@@ -54,8 +54,6 @@ prop_en_sources_ELEC <- function(coal_petrol, nat_gas, wind, hydro, total, to_hy
   print(plot)
   return(all)
 }
-
-
 tab <- prop_en_sources_ELEC(357,243,173,31,1000, 0.25, 0.75)
 
 #Calculates how much co2 emissions are averted when using hydroelectric or wind power
@@ -84,9 +82,25 @@ co2_averted <- function(bef_af_tab, total){
 co2_averted(tab,10000)
 
 
+#This function plots user provided monthly data on energy production. Accepts data for natural gas, 
+#electricity, and oil production for a company.
+production_plot <- function(data, type, units){
+  df <- data.frame(prod = data, month = 1:length(data))
+  names(df) <- c(eval(type), "month")
+  
+  ggplot(df, aes(x= month, y = df[,1])) + geom_line() + 
+    labs(title = paste0("Monthly Production of ", type), x = "Month", 
+         y = eval(units) ) + 
+    scale_x_continuous(breaks= seq(1,length(data),2), limits = c(1,length(data))) + 
+    theme(axis.text.y = element_text(angle = 45, hjust = 1)) 
 
+} 
 
+#SAMPLE DATA: YEAR OF PRODUCTION
+entry <- c(552442,542981,550206, 523805,532105,550104,
+           523497, 531043, 515760, 522633, 460115, 495600)
 
-
-
+production_plot(entry, "Natural Gas", "Millions of Cubic Feet")  
+production_plot(entry, "Electricity", "Megawatt Hours (MwH)")  
+production_plot(entry, "Distilled Oil", "Metric Tonnes")  
 
