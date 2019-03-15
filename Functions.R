@@ -104,3 +104,28 @@ production_plot(entry, "Natural Gas", "Millions of Cubic Feet")
 production_plot(entry, "Electricity", "Megawatt Hours (MwH)")  
 production_plot(entry, "Distilled Oil", "Metric Tonnes")  
 
+
+
+#Calculates the gross carbon footprint in metric tonnes of CO2 emitted for 
+#user inputted energy production data
+footprint_Num <- function(monthly_data, table, type = c("Natural Gas", "Distilled Oil", "Electricity")){
+  
+  if(eval(type) == "Electricity"){
+    table %>% filter(., id == "Before") %>% select(., proportion) %>% 
+      data.matrix(., rownames.force = NA) -> before_EPA
+    table %>% filter(., id == "After") %>% select(., proportion) %>% 
+      data.matrix(., rownames.force = NA) -> after_EPA
+    
+    cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) %*% t(before_EPA) 
+                     %*% matrix(c(2.0174, 0.4516, 0, 0, 0.2348), nrow = 5), month = 1:length(monthly_data))
+    
+    print(sum(cf$emissions))
+    
+  } else if(eval(type) == "Distilled Oil"){
+    cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) *2.0174)
+    print(sum(cf$emissions))
+  } else {
+    cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) *0.4516)
+    print(sum(cf$emissions))
+  }
+}
