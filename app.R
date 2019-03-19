@@ -40,8 +40,9 @@ shinyApp(
                          numericInput('propensourcesELEC_wind', 'Wind production:', 0),
                          numericInput('propensourcesELEC_hydro', 'Hydro production:', 0),
                          numericInput('propensourcesELEC_total', 'Total production:', 0),
-                         numericInput('propensourcesELEC_tohydro', 'Hydro production goal:', 0),
-                         numericInput('propensourcesELEC_towind', 'Wind production goal:', 0)
+                         numericInput('propensourcesELEC_tohydro', 'Hydro production % increase goal:', 0),
+                         numericInput('propensourcesELEC_towind', 'Wind production % increase goal:', 0),
+                         plotOutput('propensourcesELEC')
                      ),
                      box(title = 'Plotting Energy Production',
                          fileInput('productionplot_data', 'Upload data file (csv):', accept = c('.csv')),
@@ -104,10 +105,15 @@ shinyApp(
       
       
       # OUTPUTS
-      output$test <- renderPlot({
-        iris %>% 
-          ggplot(aes(Sepal.Length, Sepal.Width)) +
-          geom_point()
+      output$propensourcesELEC <- renderPlot({
+        coalpetrol <- input$propensourcesELEC_coalpetrol
+        natgas <- input$propensourcesELEC_natgas
+        wind <- input$propensourcesELEC_wind
+        hydro <- input$propensourcesELEC_hydro
+        total <- input$propensourcesELEC_total
+        tohydro <- input$propensourcesELEC_tohydro
+        towind <- input$propensourcesELEC_towind
+        prop_en_sources_ELEC(coalpetrol, natgas, wind, hydro, total, tohydro, towind)
       })
       
       
@@ -145,8 +151,9 @@ shinyApp(
           labs(title="Proportion of Annual MwH Produced\nby Energy Source", x="", 
                y="Fraction of Annual Energy Produced") + theme(legend.position = "bottom") + 
           scale_fill_discrete(name = "EPA Reduction\nin Effect") + coord_flip()
-        print(plot)
-        return(all)
+        plot
+        # print(plot)
+        # return(all)
       }
       
       co2_averted <- function(bef_af_tab, total) {
