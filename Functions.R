@@ -108,24 +108,28 @@ production_plot(entry, "Distilled Oil", "Metric Tonnes")
 
 #Calculates the gross carbon footprint in metric tonnes of CO2 emitted for 
 #user inputted energy production data
-footprint_Num <- function(monthly_data, table, type = c("Natural Gas", "Distilled Oil", "Electricity")){
+footprint_Num <- function(df, col_name, table, 
+                          type = c("Natural Gas", "Distilled Oil", "Electricity")){
   
   if(eval(type) == "Electricity"){
-    table %>% filter(., id == "Before") %>% select(., proportion) %>% 
+    table %>% filter(., id == "Before") %>% select(., proportion) %>%
       data.matrix(., rownames.force = NA) -> before_EPA
-    table %>% filter(., id == "After") %>% select(., proportion) %>% 
-      data.matrix(., rownames.force = NA) -> after_EPA
     
-    cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) %*% t(before_EPA) 
-                     %*% matrix(c(2.0174, 0.4516, 0, 0, 0.2348), nrow = 5), month = 1:length(monthly_data))
+    monthly_data <- select(df, prod = !!col_name)
+    
+    cf <- data.frame(emissions =  matrix(monthly_data$prod, nrow = nrow(monthly_data) ) %*% t(before_EPA)
+                     %*% matrix(c(2.0174, 0.4516, 0, 0, 0.2348), nrow = 5) ) 
     
     print(sum(cf$emissions))
     
   } else if(eval(type) == "Distilled Oil"){
-    cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) *2.0174)
+    monthly_data <- select(df, prod = !!col_name)
+    cf <- data.frame(emissions =  matrix(monthly_data, nrow = nrow(monthly_data)) *2.0174)
     print(sum(cf$emissions))
   } else {
-    cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) *0.4516)
+    monthly_data <- select(df, prod = !!col_name)
+    cf <- data.frame(emissions =  matrix(monthly_data, nrow = nrow(monthly_data)) *0.4516)
     print(sum(cf$emissions))
   }
 }
+
