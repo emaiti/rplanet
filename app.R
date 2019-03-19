@@ -18,35 +18,27 @@ shinyApp(
         helpText('We are excited to help you monitor your energy production to best benefit the Earth,
                  as well as minimize your cost.', align = 'left'),
         helpText('To begin, please select a tab and input your data files of choice.')
-        # fileInput("filename", "Upload Dataset (csv):", accept = c('.csv'))
       ),
       mainPanel(
         tabsetPanel(
           tabPanel("Carbon Dioxide",
                    dashboardBody(
                      box(title = 'Your Carbon Footprint',
-                         fileInput('footprintnum_data', 'Upload data file (csv):', accept = c('.csv')),
-                         # something else,
-                         selectInput('footprintnum_type', 'Energy type:', c('Natural Gas', 'Distilled Oil', 'Electricity'))
+                         fileInput('footprintnumgasoil_data', 'Upload data file (csv):', accept = c('.csv')),
+                         textInput('footprintnumgasoil_colname', 'Name of column containing data:', 'monthly_data'),
+                         selectInput('footprintnumgasoil_type', 'Energy type:', c('Natural Gas', 'Distilled Oil')),
+                         textOutput('footprintnumgasoil')
                      ),
                      box(title = 'Total Carbon Dioxide Production',
                          numericInput('unitco2oil_oilout', 'Outputted oil:', 0),
                          selectInput('unitco2oil_units', 'Units:', c('barrels', 'gallons')),
                          numericInput('unitco2oil_output', 'Emissions per year:', 0),
                          textOutput('unitco2oil')
-                     ),
-                     box(title = 'How Much Carbox Dioxide Emissions Have You Averted?'
-                         
                      )
                    )
           ),
           tabPanel("Electricity",
                    dashboardBody(
-                     box(title = 'Monthly Energy Production',
-                         fileInput('productionplot_data', 'Upload data file (csv):', accept = c('.csv')),
-                         selectInput('productionplot_type', 'Energy type:', c('Natural Gas', 'Electricity', 'Distilled Oil')),
-                         textInput('productionplot_units', 'Units:', 'ex: Megawatt Hours (MwH)')
-                     ),
                      box(title = 'Contribution to Energy Production for Electricity',
                          numericInput('propensourcesELEC_coalpetrol', 'Coal & petrol production:', 0),
                          numericInput('propensourcesELEC_natgas', 'Natural gas production:', 0),
@@ -56,6 +48,21 @@ shinyApp(
                          numericInput('propensourcesELEC_tohydro', 'Hydro production % increase goal:', 0),
                          numericInput('propensourcesELEC_towind', 'Wind production % increase goal:', 0),
                          plotOutput('propensourcesELEC')
+                     ),
+                     box(title = 'Monthly Energy Production',
+                         fileInput('productionplot_data', 'Upload data file (csv):', accept = c('.csv')),
+                         selectInput('productionplot_type', 'Energy type:', c('Natural Gas', 'Electricity', 'Distilled Oil')),
+                         textInput('productionplot_units', 'Units:', 'ex: Megawatt Hours (MwH)')
+                     ),
+                     box(title = 'How Much Carbon of Dioxide Emissions Have You Averted?',
+                         numericInput('co2averted_total', 'Total MwH produced per year:', 0),
+                         plotOutput('co2averted')
+                     ),
+                     box(title = 'Your Carbon Footprint',
+                         fileInput('footprintnumelec_data', 'Upload data file (csv):', accept = c('.csv')),
+                         textInput('footprintnumelec_colname', 'Name of column containing data:', 'monthly_data'),
+                         textOutput('footprintnumelec') #,
+                         # tags$head(tags$style("#footprintnumelec{color: red;}"))
                      )
                    )
           ),
@@ -118,6 +125,9 @@ shinyApp(
         longcol <- input$createplantmap_longcol
         energy <- input$createplantmap_energy
         radcol <- input$createplantmap_radcol
+        validate(
+          need(input$createplantmap_data != 0, "Please select file for input.")
+        )
         inFile <- input$createplantmap_data
         if (is.null(inFile)) return(NULL)
         data <- read_csv(inFile$datapath)
@@ -131,6 +141,10 @@ shinyApp(
         elat <- input$createfluideqmap_eqlatcol
         elong <- input$createfluideqmap_eqlongcol
         mag <- input$createfluideqmap_magcol
+        validate(
+          need(input$createfluideqmap_data_fi != 0 &
+                 input$createfluideqmap_data_eq != 0, "Please select files for input.")
+        )
         inFile1 <- input$createfluideqmap_data_fi
         if (is.null(inFile1)) return(NULL)
         data_fi <- read_csv(inFile1$datapath)
@@ -145,7 +159,37 @@ shinyApp(
         oilout <- input$unitco2oil_oilout
         units <- input$unitco2oil_units
         output <- input$unitco2oil_output
+        if (oilout == 0 & output == 0) return(0)
         unit_co2_oil(oilout, units, output)
+      })
+      
+      output$co2averted <- renderPlot({
+        tab <- for_co2_averted
+        total <- input$co2averted_total
+        co2_averted(tab, total)
+      })
+      
+      output$footprintnumgasoil <- renderText({
+        validate(
+          need(input$footprintnumgasoil_data != 0, "Please select file for input.")
+        )
+        inFile <- input$footprintnumgasoil_data
+        data <- read_csv(inFile$datapath)
+        colname <- input$footprintnumgasoil_colname
+        type <- input$footprintnumgasoil_type
+        footprint_num_gasoil(data, colname, type)
+      })
+      
+      output$footprintnumelec <- renderText({
+        validate(
+          need(input$footprintnumelec_data != 0, "Please select file for input.")
+        )
+        inFile <- input$footprintnumelec_data
+        if (is.null(inFile)) return(0)
+        data <- read_csv(inFile$datapath)
+        colname <- input$footprintnumelec_colname
+        table <- for_co2_averted
+        footprint_num_elec(data, colname, table)
       })
       
       
@@ -153,7 +197,7 @@ shinyApp(
       # FUNCTIONS
       unit_co2_oil <- function(oil_out, units = c("barrels", "gallons"), 
                                emissions_yr, preds_co2, preds_oil) {
-        if(units == "barrels") {
+        if (units == "barrels") {
           tons_oil_month <- (oil_out * 42 * 365)/(264.3405 * 12)
         } else {
           tons_oil_month <- (oil_out * 365)/12
@@ -164,6 +208,7 @@ shinyApp(
         return(mean(co2_prod_per_ton[,1]))
       }
       
+      for_co2_averted <<- data.frame()
       prop_en_sources_ELEC <- function(coal_petrol, nat_gas, wind, hydro, total, to_hydro, to_wind) {
         other <- total - coal_petrol - nat_gas - wind - hydro
         props <- data.frame(type = c("Coal and Petrol", "Natural Gas", "Wind", "Hydroelectric", "Other"), 
@@ -178,13 +223,13 @@ shinyApp(
         all <- data.frame(rbind(props, props_chg))
         all$type <- factor(all$type, levels = c("Other", "Wind", "Hydroelectric", "Natural Gas", "Coal and Petrol"))
         all$id <- factor(all$id, levels = c("Before", "After"))
+        for_co2_averted <<- all
         plot <- ggplot(all, aes(x=type, y=proportion, fill= id)) + 
           geom_bar(stat = "identity", width = 0.5, position = position_dodge()) + 
           labs(title="Proportion of Annual MwH Produced\nby Energy Source", x="", 
                y="Fraction of Annual Energy Produced") + theme(legend.position = "bottom") + 
           scale_fill_discrete(name = "EPA Reduction\nin Effect") + coord_flip()
         plot
-        # print(plot)
         # return(all)
       }
       
@@ -202,7 +247,7 @@ shinyApp(
           labs(title="Emissions Averted by Replacing Natural\nGas in Electricity Production", x="", 
                y="CO2 Emissions Averted\n(metric tonnes)") + theme(legend.position = "bottom") + 
           scale_fill_discrete(name = "EPA Reduction\nin Effect") 
-        print(plot_gas)
+        plot_gas
       }
       
       production_plot <- function(data, type, units) {
@@ -215,22 +260,26 @@ shinyApp(
           theme(axis.text.y = element_text(angle = 45, hjust = 1)) 
       }
       
-      footprint_Num <- function(monthly_data, table, type = c("Natural Gas", "Distilled Oil", "Electricity")) {
-        if(eval(type) == "Electricity"){
-          table %>% filter(., id == "Before") %>% select(., proportion) %>% 
-            data.matrix(., rownames.force = NA) -> before_EPA
-          table %>% filter(., id == "After") %>% select(., proportion) %>% 
-            data.matrix(., rownames.force = NA) -> after_EPA
-          cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) %*% t(before_EPA) 
-                           %*% matrix(c(2.0174, 0.4516, 0, 0, 0.2348), nrow = 5), month = 1:length(monthly_data))
-          print(sum(cf$emissions))
-        } else if(eval(type) == "Distilled Oil") {
-          cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) *2.0174)
-          print(sum(cf$emissions))
+      footprint_num_gasoil <- function(df, col_name,
+                                type = c("Natural Gas", "Distilled Oil")) {
+        if(eval(type) == "Distilled Oil") {
+          monthly_data <- select(df, prod = !!col_name)
+          cf <- data.frame(emissions =  matrix(monthly_data, nrow = nrow(monthly_data)) *2.0174)
+          return(sum(cf$emissions))
         } else {
-          cf <- data.frame(emissions =  matrix(monthly_data, nrow = length(entry)) *0.4516)
-          print(sum(cf$emissions))
+          monthly_data <- select(df, prod = !!col_name)
+          cf <- data.frame(emissions =  matrix(monthly_data, nrow = nrow(monthly_data)) *0.4516)
+          return(sum(cf$emissions))
         }
+      }
+      
+      footprint_num_elec <- function(df, col_name, table) {
+        table %>% filter(., id == "Before") %>% select(., proportion) %>%
+          data.matrix(., rownames.force = NA) -> before_EPA
+        monthly_data <- select(df, prod = !!col_name)
+        cf <- data.frame(emissions =  matrix(monthly_data$prod, nrow = nrow(monthly_data) ) %*% t(before_EPA)
+                          %*% matrix(c(2.0174, 0.4516, 0, 0, 0.2348), nrow = 5) ) 
+        return(sum(cf$emissions))
       }
       
       create_fluid_eq_map <- function(fluid_data, fluid_lat_col, fluid_long_col, fluid_vol_col,
@@ -259,7 +308,6 @@ shinyApp(
           addTiles() %>% 
           addCircleMarkers(~long, ~lat, radius = ~rad_level, color = ~color_palette(energy))
       }
-      
     }
   )
 )
