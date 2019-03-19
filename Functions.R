@@ -97,12 +97,12 @@ footprint_num_gasoil <- function(df, col_name,
                                  type = c("Natural Gas", "Distilled Oil")) {
   if(eval(type) == "Distilled Oil") {
     monthly_data <- select(df, prod = !!col_name)
-    cf <- data.frame(emissions =  matrix(monthly_data, nrow = nrow(monthly_data)) *2.0174)
-    return(sum(cf$emissions))
+    monthly_data <- monthly_data %>% mutate(emissions = prod*2.0174)
+    return(sum(monthly_data$emissions))
   } else {
     monthly_data <- select(df, prod = !!col_name)
-    cf <- data.frame(emissions =  matrix(monthly_data, nrow = nrow(monthly_data)) *0.4516)
-    return(sum(cf$emissions))
+    monthly_data <- monthly_data %>% mutate(emissions = prod*2.0174)
+    return(sum(monthly_data$emissions))
   }
 }
 
