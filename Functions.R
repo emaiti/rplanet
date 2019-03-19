@@ -84,17 +84,17 @@ co2_averted(tab,10000)
 
 #This function plots user provided monthly data on energy production. Accepts data for natural gas, 
 #electricity, and oil production for a company.
-production_plot <- function(data, type, units){
-  df <- data.frame(prod = data, month = 1:length(data))
-  names(df) <- c(eval(type), "month")
+production_plot <- function(df, col_name, type, units){
+  select(df, prod = !!col_name) %>% mutate(., month= 1:nrow(df)) -> monthly_data
+  names(monthly_data) <- c(eval(type), "month")
   
-  ggplot(df, aes(x= month, y = df[,1])) + geom_line() + 
-    labs(title = paste0("Monthly Production of ", type), x = "Month", 
-         y = eval(units) ) + 
-    scale_x_continuous(breaks= seq(1,length(data),2), limits = c(1,length(data))) + 
-    theme(axis.text.y = element_text(angle = 45, hjust = 1)) 
-
-} 
+  ggplot(monthly_data, aes(x= month, y = monthly_data[,1])) + geom_line() +
+    labs(title = paste0("Monthly Production of ", type), x = "Month",
+         y = eval(units) ) +
+    scale_x_continuous(breaks= seq(1,nrow(monthly_data),2), limits = c(1,nrow(monthly_data))) +
+    theme(axis.text.y = element_text(angle = 45, hjust = 1))
+  
+}
 
 #SAMPLE DATA: YEAR OF PRODUCTION
 entry <- c(552442,542981,550206, 523805,532105,550104,
