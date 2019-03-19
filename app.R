@@ -4,6 +4,8 @@ library(dplyr)
 library(ggplot2)
 library(tools)
 library(leaflet)
+library(readr)
+library(tidyr)
 
 shinyApp(
   shinyUI(
@@ -27,13 +29,24 @@ shinyApp(
                          # something else,
                          selectInput('footprintnum_type', 'Energy type:', c('Natural Gas', 'Distilled Oil', 'Electricity'))
                      ),
-                     box(title = 'Total Carbon Dioxide Production'
-                         # numericInput()
+                     box(title = 'Total Carbon Dioxide Production',
+                         numericInput('unitco2oil_oilout', 'Outputted oil:', 0),
+                         selectInput('unitco2oil_units', 'Units:', c('barrels', 'gallons')),
+                         numericInput('unitco2oil_output', 'Emissions per year:', 0),
+                         textOutput('unitco2oil')
+                     ),
+                     box(title = 'How Much Carbox Dioxide Emissions Have You Averted?'
+                         
                      )
                    )
           ),
           tabPanel("Electricity",
                    dashboardBody(
+                     box(title = 'Monthly Energy Production',
+                         fileInput('productionplot_data', 'Upload data file (csv):', accept = c('.csv')),
+                         selectInput('productionplot_type', 'Energy type:', c('Natural Gas', 'Electricity', 'Distilled Oil')),
+                         textInput('productionplot_units', 'Units:', 'ex: Megawatt Hours (MwH)')
+                     ),
                      box(title = 'Contribution to Energy Production for Electricity',
                          numericInput('propensourcesELEC_coalpetrol', 'Coal & petrol production:', 0),
                          numericInput('propensourcesELEC_natgas', 'Natural gas production:', 0),
@@ -43,16 +56,36 @@ shinyApp(
                          numericInput('propensourcesELEC_tohydro', 'Hydro production % increase goal:', 0),
                          numericInput('propensourcesELEC_towind', 'Wind production % increase goal:', 0),
                          plotOutput('propensourcesELEC')
-                     ),
-                     box(title = 'Plotting Energy Production',
-                         fileInput('productionplot_data', 'Upload data file (csv):', accept = c('.csv')),
-                         selectInput('productionplot_type', 'Energy type:', c('Natural Gas', 'Electricity', 'Distilled Oil')),
-                         textInput('productionplot_units', 'Units:', 'ex: Megawatt Hours (MwH)')
                      )
                    )
           ),
-          tabPanel("Radiation"),
-          tabPanel("Fluid Injection")
+          tabPanel("Radiation",
+                   dashboardBody(
+                     box(title = 'Monitor Power Plants and Radiation',
+                         fileInput('createplantmap_data', 'Upload data file (csv):', accept = c('.csv')),
+                         textInput('createplantmap_latcol', 'Name of column containing latitudes:', 'lat'),
+                         textInput('createplantmap_longcol', 'Name of column containing longitudes:', 'long'),
+                         textInput('createplantmap_energy', 'Name of column containing energy production totals:', 'energy'),
+                         textInput('createplantmap_radcol', 'Name of column containing radiation level:', 'rad_level'),
+                         plotOutput('createplantmap')
+                     )
+                   )
+          ),
+          tabPanel("Fluid Injection",
+                   dashboardBody(
+                     box(title = 'Map Fluid Injections vs. Earthquakes',
+                       fileInput('createfluideqmap_data_fi', 'Upload fluid injection data file (csv):', accept = c('.csv')),
+                       textInput('createfluideqmap_fluidlatcol', 'Name of column containing latitudes:', 'lat'),
+                       textInput('createfluideqmap_fluidlongcol', 'Name of column containing longitudes:', 'long'),
+                       textInput('createfluideqmap_volcol', 'Name of column containing injection volumes:', 'vol'),
+                       fileInput('createfluideqmap_data_eq', 'Upload earthquake data file (csv):', accept = c('.csv')),
+                       textInput('createfluideqmap_eqlatcol', 'Name of column containing latitudes:', 'lat'),
+                       textInput('createfluideqmap_eqlongcol', 'Name of column containing longitudes:', 'long'),
+                       textInput('createfluideqmap_magcol', 'Name of column containing magnitudes:', 'mag'),
+                       plotOutput('createfluideqmap')
+                     )
+                   )
+          )
         )
       )
     )
@@ -66,42 +99,6 @@ shinyApp(
       
       
       # FILE UPLOADS
-      co2Input <- reactive({
-        validate(
-          need(input$filename != 0, "test")
-        )
-        inFile <- input$filename
-        if (is.null(inFile)) return(NULL)
-        read_csv(inFile$datapath)
-      })
-      
-      electricityInput <- reactive({
-        validate(
-          need(input$filename != 0, "test")
-        )
-        inFile <- input$filename
-        if (is.null(inFile)) return(NULL)
-        read_csv(inFile$datapath)
-      })
-      
-      radiationInput <- reactive({
-        validate(
-          need(input$filename != 0, "test")
-        )
-        inFile <- input$filename
-        if (is.null(inFile)) return(NULL)
-        read_csv(inFile$datapath)
-      })
-      
-      fluidInjInput <- reactive({
-        validate(
-          need(input$filename != 0, "test")
-        )
-        inFile <- input$filename
-        if (is.null(inFile)) return(NULL)
-        read_csv(inFile$datapath)
-      })
-      
       
       
       # OUTPUTS
@@ -114,6 +111,41 @@ shinyApp(
         tohydro <- input$propensourcesELEC_tohydro
         towind <- input$propensourcesELEC_towind
         prop_en_sources_ELEC(coalpetrol, natgas, wind, hydro, total, tohydro, towind)
+      })
+      
+      output$createplantmap <- renderPlot({
+        latcol <- input$createplantmap_latcol
+        longcol <- input$createplantmap_longcol
+        energy <- input$createplantmap_energy
+        radcol <- input$createplantmap_radcol
+        inFile <- input$createplantmap_data
+        if (is.null(inFile)) return(NULL)
+        data <- read_csv(inFile$datapath)
+        create_plant_map(data, latcol, longcol, energy, radcol)
+      })
+      
+      output$createfluideqmap <- renderPlot({
+        flat <- input$createfluideqmap_fluidlatcol
+        flong <- input$createfluideqmap_fluidlongcol
+        vol <- input$createfluideqmap_volcol
+        elat <- input$createfluideqmap_eqlatcol
+        elong <- input$createfluideqmap_eqlongcol
+        mag <- input$createfluideqmap_magcol
+        inFile1 <- input$createfluideqmap_data_fi
+        if (is.null(inFile1)) return(NULL)
+        data_fi <- read_csv(inFile1$datapath)
+        inFile2 <- input$createfluideqmap_data_eq
+        if (is.null(inFile2)) return(NULL)
+        data_eq <- read_csv(inFile2$datapath)
+        create_fluid_eq_map(data_fi, flat, flong, vol,
+                            data_eq, elat, elong, mag)
+      })
+      
+      output$unitco2oil <- renderText({
+        oilout <- input$unitco2oil_oilout
+        units <- input$unitco2oil_units
+        output <- input$unitco2oil_output
+        unit_co2_oil(oilout, units, output)
       })
       
       
@@ -203,10 +235,10 @@ shinyApp(
       
       create_fluid_eq_map <- function(fluid_data, fluid_lat_col, fluid_long_col, fluid_vol_col,
                                       eq_data, eq_lat_col, eq_long_col, eq_mag_col) {
-        df_fluidinjection <- read_csv(fluid_data) %>% 
+        df_fluidinjection <- fluid_data %>% 
           drop_na() %>% 
           select(long = !!fluid_long_col, lat = !!fluid_lat_col, vol = !!fluid_vol_col)
-        df_eq <- read_csv(eq_data) %>% 
+        df_eq <- eq_data %>% 
           drop_na() %>% 
           select(long = !!eq_long_col, lat = !!eq_lat_col, mag = !!eq_mag_col)
         color_palette <- colorNumeric(palette = 'Reds', domain = df_fluidinjection$vol, reverse = F)
@@ -218,7 +250,7 @@ shinyApp(
       }
       
       create_plant_map <- function(data, lat_col, long_col, energy_col, rad_col) {
-        df <- read_csv(data) %>%
+        df <- data %>%
           drop_na() %>% 
           select(long = !!long_col, lat = !!lat_col, energy = !!energy_col, rad_level = !!rad_col)
         color_palette <- colorNumeric(palette = 'viridis', domain = df$energy, reverse = F)
